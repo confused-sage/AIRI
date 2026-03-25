@@ -1,14 +1,3 @@
-"""
-app.py — AI Risk Intelligence Dashboard
-========================================
-Tabs:
-  1. Overview        — KPIs + scatter + histograms
-  2. Risk Distribution — pie charts + agreement matrix
-  3. Allocation       — current vs suggested + delta bar
-  4. Insights         — red flags + sector + persona benchmarks
-  5. Investor Drill-Down — per-investor profile, charts, advice
-"""
-
 import io
 import streamlit as st
 import pandas as pd
@@ -16,7 +5,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pipeline import run_pipeline
 
-# ── page config ───────────────────────────────────────────────────────────────
 
 st.set_page_config(
     page_title="AI Risk Intelligence",
@@ -25,27 +13,22 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ── colours ───────────────────────────────────────────────────────────────────
 
 RISK_COLORS = {"Low": "#22c55e", "Medium": "#f59e0b", "High": "#ef4444"}
 PALETTE     = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"]
 
-# ── minimal dark CSS ──────────────────────────────────────────────────────────
 
 st.markdown("""
 <style>
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-/* page background */
 .stApp { background: #0f0f11; color: #e2e8f0; }
 .block-container { padding: 1.5rem 2rem 4rem; max-width: 1400px; }
 
-/* sidebar */
 [data-testid="stSidebar"] { background: #0a0a0c; border-right: 1px solid #1e1e24; }
 [data-testid="stSidebar"] * { color: #94a3b8 !important; }
 [data-testid="stSidebar"] h3 { color: #e2e8f0 !important; }
 
-/* section header */
 .sec-head {
     font-size: 13px; font-weight: 600; color: #6366f1;
     text-transform: uppercase; letter-spacing: 1.5px;
@@ -53,7 +36,6 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     border-bottom: 1px solid #1e1e24;
 }
 
-/* stat card */
 .kcard {
     background: #141417; border: 1px solid #1e1e24; border-radius: 10px;
     padding: 16px 18px; margin-bottom: 10px;
@@ -62,7 +44,6 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .kcard .val   { font-size: 26px; font-weight: 700; color: #f1f5f9; line-height: 1; }
 .kcard .sub   { font-size: 12px; color: #475569; margin-top: 4px; }
 
-/* flag row */
 .flag-row {
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 14px; background: #141417;
@@ -72,13 +53,11 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .flag-row .flabel { color: #94a3b8; font-size: 13px; }
 .flag-row .fval   { color: #f1f5f9; font-size: 13px; font-weight: 600; }
 
-/* risk badge */
 .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
 .badge-Low    { background: #052e16; color: #22c55e; border: 1px solid #22c55e; }
 .badge-Medium { background: #451a03; color: #f59e0b; border: 1px solid #f59e0b; }
 .badge-High   { background: #450a0a; color: #ef4444; border: 1px solid #ef4444; }
 
-/* investor card */
 .icard {
     background: #141417; border: 1px solid #1e1e24;
     border-radius: 10px; padding: 20px 22px; margin-bottom: 10px;
@@ -88,44 +67,37 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .irow .ilabel { color: #64748b; font-size: 13px; }
 .irow .ivalue { color: #f1f5f9; font-size: 13px; font-weight: 500; }
 
-/* allocation bars */
 .abar-wrap { margin: 10px 0; }
 .abar-labels { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 4px; }
 .abar { height: 7px; border-radius: 99px; background: #1e1e24; overflow: hidden; margin-bottom: 12px; }
 .abar-fill { height: 100%; border-radius: 99px; }
 
-/* advice box */
 .advice-box {
     margin-top: 10px; padding: 12px 14px;
     background: #052e16; border: 1px solid #22c55e;
     border-radius: 8px; font-size: 13px; color: #22c55e; line-height: 1.6;
 }
-/* reason box */
 .reason-box {
     margin-top: 10px; padding: 12px 14px;
     background: #1a1a2e; border-left: 3px solid #6366f1;
     border-radius: 0 8px 8px 0; font-size: 13px; color: #94a3b8; line-height: 1.6;
 }
 
-/* download button */
 .stDownloadButton > button {
     background: #6366f1 !important; color: #fff !important;
     border: none !important; border-radius: 8px !important;
     font-weight: 600 !important; width: 100%;
 }
 
-/* metrics */
 [data-testid="stMetric"] { background: #141417; border: 1px solid #1e1e24; border-radius: 8px; padding: 14px !important; }
 [data-testid="stMetricLabel"] { color: #64748b !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 1px; }
 [data-testid="stMetricValue"] { color: #f1f5f9 !important; font-size: 22px !important; }
 
-/* tab labels */
 button[data-baseweb="tab"] { color: #64748b !important; font-weight: 500; }
 button[data-baseweb="tab"][aria-selected="true"] { color: #6366f1 !important; border-bottom-color: #6366f1 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ── plotly base ───────────────────────────────────────────────────────────────
 
 _LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
@@ -149,7 +121,6 @@ def _sh(text: str):
     st.markdown(f'<div class="sec-head">{text}</div>', unsafe_allow_html=True)
 
 
-# ── sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown("### ⚙️ Settings")
@@ -172,8 +143,6 @@ with st.sidebar:
     investor_file = st.file_uploader("Investors CSV", type=["csv"])
     holdings_file = st.file_uploader("Holdings CSV",  type=["csv"])
 
-
-# ── landing ───────────────────────────────────────────────────────────────────
 
 if not (investor_file and holdings_file):
     st.markdown("""
@@ -208,7 +177,6 @@ if not (investor_file and holdings_file):
     st.stop()
 
 
-# ── run pipeline ──────────────────────────────────────────────────────────────
 
 @st.cache_data(show_spinner="Running risk pipeline…")
 def _run(inv_b: bytes, hld_b: bytes, realtime: bool, manual: str | None):
@@ -226,7 +194,6 @@ df, market, summary = _run(
 
 holdings = pd.read_csv(io.BytesIO(holdings_file.getvalue()))
 
-# ── KPI strip ─────────────────────────────────────────────────────────────────
 
 rd = summary.get("risk_distribution", {})
 k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
@@ -240,7 +207,6 @@ k7.metric("Market Condition", market)
 
 st.divider()
 
-# ── tabs ──────────────────────────────────────────────────────────────────────
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Overview",
@@ -251,12 +217,8 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# TAB 1 — OVERVIEW
-# ════════════════════════════════════════════════════════════════════════════
 
 with tab1:
-    # Scatter: volatility vs Sharpe coloured by persona
     _sh("Portfolio Volatility vs Sharpe Ratio")
     fig_s = _fig(px.scatter(
         df,
@@ -307,12 +269,8 @@ with tab1:
     st.plotly_chart(fig_dd, use_container_width=True)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# TAB 2 — RISK DISTRIBUTION
-# ════════════════════════════════════════════════════════════════════════════
 
 with tab2:
-    # Three pie charts: rule / AI / dynamic risk
     pc1, pc2, pc3 = st.columns(3)
     for col, field, title in [
         (pc1, "Rule_Risk",    "Rule-Based Risk"),
@@ -329,7 +287,6 @@ with tab2:
         fig_pie.update_traces(textfont_size=13, textfont_color="#f1f5f9")
         col.plotly_chart(fig_pie, use_container_width=True)
 
-    # Agreement heatmap between rule and AI
     _sh("Rule-Based vs AI Risk Agreement")
     heat = pd.crosstab(df["Rule_Risk"], df["AI_Risk"])
     fig_h = _fig(px.imshow(
@@ -340,7 +297,6 @@ with tab2:
     st.plotly_chart(fig_h, use_container_width=True)
     st.caption("This matrix shows how often Rule-Based and AI risk labels agree on each investor.")
 
-    # Risk score distribution
     _sh("Risk Score Distribution")
     fig_rs = _fig(px.histogram(
         df, x="Risk_Score", color="Rule_Risk", nbins=20,
@@ -351,12 +307,8 @@ with tab2:
     st.plotly_chart(fig_rs, use_container_width=True)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# TAB 3 — ALLOCATION
-# ════════════════════════════════════════════════════════════════════════════
 
 with tab3:
-    # Equity delta bar chart
     _sh("Equity Adjustment Needed per Investor")
     df_sorted   = df.sort_values("Equity_Delta")
     bar_colors  = df_sorted["Equity_Delta"].apply(
@@ -404,12 +356,8 @@ with tab3:
         st.plotly_chart(fig_dir, use_container_width=True)
 
 
-# ════════════════════════════════════════════════════════════════════════════
-# TAB 4 — INSIGHTS
-# ════════════════════════════════════════════════════════════════════════════
 
 with tab4:
-    # Summary KPI cards
     _sh("Portfolio Summary")
     m1, m2, m3, m4 = st.columns(4)
     for col, label, val, sub in [
@@ -426,7 +374,6 @@ with tab4:
         </div>
         """, unsafe_allow_html=True)
 
-    # Red flag panel
     _sh("Portfolio Red Flags")
     flags = [
         ("Deep drawdown (below −20%)",        f"{summary.get('deep_drawdown_pct', 0)}% of investors"),
@@ -441,7 +388,6 @@ with tab4:
             unsafe_allow_html=True,
         )
 
-    # Top exposed sectors
     top_sec = summary.get("top_exposed_sectors", {})
     if top_sec:
         _sh("Most Concentrated Sectors")
@@ -453,7 +399,6 @@ with tab4:
         ))
         st.plotly_chart(fig_sec, use_container_width=True)
 
-    # Persona average metrics
     _sh("Average Metrics by Investor Persona")
     persona_avg = df.groupby("Persona")[[
         "Portfolio_Volatility", "Sharpe_Ratio", "Beta",
@@ -469,7 +414,6 @@ with tab4:
     ))
     st.plotly_chart(fig_pa, use_container_width=True)
 
-    # Calmar ratio distribution
     _sh("Calmar Ratio Distribution (Return / Max Drawdown)")
     fig_cal = _fig(px.histogram(
         df, x="Calmar_Ratio", color="Dynamic_Risk", nbins=20,
@@ -480,10 +424,6 @@ with tab4:
     st.plotly_chart(fig_cal, use_container_width=True)
     st.caption("Higher Calmar ratio = better return per unit of drawdown risk.")
 
-
-# ════════════════════════════════════════════════════════════════════════════
-# TAB 5 — INVESTOR DRILL-DOWN
-# ════════════════════════════════════════════════════════════════════════════
 
 with tab5:
     investor_id = st.selectbox(
@@ -500,7 +440,6 @@ with tab5:
 
     dc1, dc2 = st.columns(2)
 
-    # ── left: profile + risk ─────────────────────────────────────────────
     with dc1:
         st.markdown(f"""
         <div class="icard">
@@ -541,7 +480,6 @@ with tab5:
         </div>
         """, unsafe_allow_html=True)
 
-    # ── right: allocation + holdings ─────────────────────────────────────
     with dc2:
         eq_curr = float(inv["Equity_Percent"])
         eq_sugg = float(inv["Suggested_Equity"])
@@ -577,7 +515,6 @@ with tab5:
         </div>
         """, unsafe_allow_html=True)
 
-        # Holdings charts (only if data exists)
         if not inv_hold.empty:
             sector_grp = inv_hold.groupby("Sector")["Value"].sum().reset_index()
             fig_sv = _fig(px.bar(
@@ -598,7 +535,6 @@ with tab5:
 
     st.divider()
 
-    # Full table
     with st.expander("📋 Full Data Table — All Investors"):
         show_cols = [
             "Investor_ID", "Age", "Persona", "Rule_Risk", "AI_Risk", "Dynamic_Risk",

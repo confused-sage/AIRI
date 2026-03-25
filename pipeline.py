@@ -1,19 +1,3 @@
-"""
-pipeline.py — AI Risk Intelligence Engine
-==========================================
-Stages:
-  1. Data ingestion & validation
-  2. Market data fetch (single yfinance call)
-  3. Portfolio metrics (volatility, Sharpe, Beta, drawdown, etc.)
-  4. Rule-based risk scoring
-  5. K-Means persona clustering
-  6. Risk label fusion (rule + AI)
-  7. Dynamic market adjustment
-  8. Allocation comparison & rebalancing suggestions
-  9. Advice & risk reason generation
- 10. Portfolio-level summary
-"""
-
 from __future__ import annotations
 
 import warnings
@@ -27,7 +11,6 @@ from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
 
-# ── constants ─────────────────────────────────────────────────────────────────
 
 BENCHMARK = "^NSEI"
 PERIOD    = "3mo"
@@ -65,8 +48,6 @@ REQUIRED_INV = {"Investor_ID", "Age", "Income", "Investment", "Equity_Percent", 
 REQUIRED_HLD = {"Investor_ID", "Ticker", "Quantity", "Price", "Sector"}
 
 
-# ── 1. validation ─────────────────────────────────────────────────────────────
-
 def load_and_validate(
     investor_data: pd.DataFrame,
     holdings_data: pd.DataFrame,
@@ -93,8 +74,6 @@ def load_and_validate(
 
     return inv, hld
 
-
-# ── 2. market data ────────────────────────────────────────────────────────────
 
 class MarketData:
     def __init__(self, stock_returns, bench_returns, bench_var, market_state, bench_3mo_ret):
@@ -156,8 +135,6 @@ def fetch_market_data(
 
     return MarketData(stock_returns, bench_returns, bench_var, market_state, bench_3mo_ret)
 
-
-# ── 3. portfolio metrics ──────────────────────────────────────────────────────
 
 def _safe_cov(a: pd.Series, b: pd.Series) -> float:
     idx = a.dropna().index.intersection(b.dropna().index)
@@ -242,7 +219,6 @@ def compute_portfolio_metrics(
     return investors.merge(pd.DataFrame(rows), on="Investor_ID", how="left")
 
 
-# ── 4. rule-based risk scoring ────────────────────────────────────────────────
 
 def _normalize(s: pd.Series) -> pd.Series:
     return (s - s.min()) / (s.max() - s.min() + 1e-9)
@@ -272,7 +248,6 @@ def apply_rule_based(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-# ── 5. k-means clustering ─────────────────────────────────────────────────────
 
 def apply_kmeans(data: pd.DataFrame) -> tuple[pd.DataFrame, KMeans]:
     data   = data.copy()
@@ -298,7 +273,6 @@ def map_clusters(data: pd.DataFrame, kmeans: KMeans) -> pd.DataFrame:
     return data
 
 
-# ── 6. fuse rule + ai ─────────────────────────────────────────────────────────
 
 def apply_combined(data: pd.DataFrame) -> pd.DataFrame:
     data = data.copy()
@@ -311,7 +285,6 @@ def apply_combined(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-# ── 7. dynamic market adjustment ─────────────────────────────────────────────
 
 def apply_dynamic(data: pd.DataFrame, market: str) -> pd.DataFrame:
     data = data.copy()
@@ -324,7 +297,6 @@ def apply_dynamic(data: pd.DataFrame, market: str) -> pd.DataFrame:
     return data
 
 
-# ── 8. allocation comparison ──────────────────────────────────────────────────
 
 def compute_allocations(data: pd.DataFrame, market: str) -> pd.DataFrame:
     data  = data.copy()
@@ -365,7 +337,6 @@ def compute_allocations(data: pd.DataFrame, market: str) -> pd.DataFrame:
     return pd.concat([data, data.apply(_row, axis=1)], axis=1)
 
 
-# ── 9. advice & risk reason ───────────────────────────────────────────────────
 
 def generate_advice(data: pd.DataFrame) -> pd.DataFrame:
     data = data.copy()
@@ -419,7 +390,6 @@ def generate_risk_reason(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-# ── 10. portfolio summary ─────────────────────────────────────────────────────
 
 def generate_portfolio_summary(data: pd.DataFrame, market: str) -> dict:
     n = len(data)
@@ -454,7 +424,6 @@ def generate_portfolio_summary(data: pd.DataFrame, market: str) -> dict:
     }
 
 
-# ── main entry point ──────────────────────────────────────────────────────────
 
 def run_pipeline(
     investor_data: pd.DataFrame,
@@ -462,13 +431,6 @@ def run_pipeline(
     use_realtime: bool = True,
     manual_market: Optional[str] = None,
 ) -> tuple[pd.DataFrame, str, dict]:
-    """
-    Returns
-    -------
-    df      : enriched investor DataFrame
-    market  : "Bullish" | "Neutral" | "Bearish"
-    summary : portfolio-level insight dict
-    """
     investors, holdings = load_and_validate(investor_data, holdings_data)
 
     mkt = fetch_market_data(
