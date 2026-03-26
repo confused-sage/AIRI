@@ -173,7 +173,7 @@ if not (investor_file and holdings_file):
         </div>
         """, unsafe_allow_html=True)
 
-    st.info("⬅️ Upload both CSVs in the sidebar to begin.", icon="💡")
+    st.info("Upload both CSVs in the sidebar to begin.")
     st.stop()
 
 
